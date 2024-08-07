@@ -58,7 +58,6 @@ def fetch_summary(url):
         summary = llm.complete(prompt)
         return f"{summary}\n\nFor more please visit {url}"
     except Exception as e:
-        logger.error(f"Error fetching summary: {e}")
         return f"For more please visit {url}"
 
 def fetch_articles(query):
@@ -81,62 +80,57 @@ def fetch_articles(query):
         'Content-Type': 'application/json'
     }
 
-    try:
+    response = requests.post(url, headers=headers, data=payload)
+
+    if response.status_code == 429:
+        st.warning("Too many requests. Waiting for 5 seconds before retrying...")
+        time.sleep(5)  # Wait for 5 seconds before retrying
         response = requests.post(url, headers=headers, data=payload)
-        response.raise_for_status()  # Raise an exception for HTTP errors
 
-        if response.status_code == 429:
-            st.warning("Too many requests. Waiting for 1 minute before retrying...")
-            time.sleep(60)
-            response = requests.post(url, headers=headers, data=payload)
+    if response.status_code == 200:
+        json_data = response.json()
 
-        if response.status_code == 200:
-            json_data = response.json()
+        if 'news' in json_data and json_data['news']:
+            articles = []
+            for article in json_data['news']:
+                title = article.get('title', '')
+                snippet = article.get('snippet', '')
+                article_url = article.get('link', '')
+                date_str = article.get('date', '')
 
-            if 'news' in json_data and json_data['news']:
-                articles = []
-                for article in json_data['news']:
-                    title = article.get('title', '')
-                    snippet = article.get('snippet', '')
-                    article_url = article.get('link', '')
-                    date_str = article.get('date', '')
+                if "ago" in date_str:
+                    date = parse_relative_date(date_str)
+                else:
+                    try:
+                        date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%fZ')
+                    except ValueError:
+                        date = datetime.now()
 
-                    if "ago" in date_str:
-                        date = parse_relative_date(date_str)
-                    else:
+                articles.append({
+                    'title': title,
+                    'snippet': snippet,
+                    'date': date,
+                    'url': article_url
+                })
+
+            articles.sort(key=lambda x: x['date'], reverse=True)
+
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = {executor.submit(fetch_summary, article['url']): article for article in articles}
+                for future in as_completed(futures):
+                    article = futures[future]
+                    with st.spinner(f"Processing article: {article['title']}"):
                         try:
-                            date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%fZ')
-                        except ValueError:
-                            date = datetime.now()
-
-                    articles.append({
-                        'title': title,
-                        'snippet': snippet,
-                        'date': date,
-                        'url': article_url
-                    })
-
-                articles.sort(key=lambda x: x['date'], reverse=True)
-
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    futures = {executor.submit(fetch_summary, article['url']): article for article in articles}
-                    for future in as_completed(futures):
-                        article = futures[future]
-                        with st.spinner(f"Processing article: {article['title']}"):
-                            try:
-                                summary = future.result()
-                                article['summary'] = summary
-                                display_article(article)
-                                st.write("---")
-                            except Exception as exc:
-                                logger.error(f"Generated an exception: {exc}")
-            else:
-                st.warning("No articles found.")
+                            summary = future.result()
+                            article['summary'] = summary
+                            display_article(article)
+                            st.write("---")
+                        except Exception as exc:
+                            logger.error(f"Generated an exception: {exc}")
         else:
-            st.error(f"API request error: {response.status_code} - {response.reason}")
-    except requests.RequestException as e:
-        st.error(f"Request failed: {e}")
-        logger.error(f"Request failed: {e}")
+            st.warning("No articles found.")
+    else:
+        st.error(f"API request error: {response.status_code} - {response.reason}")
 
 def display_article(article):
     button_key = f"save_{article['url']}"
@@ -177,7 +171,7 @@ def main():
     st.title("News Articles")
 
     if 'country' not in st.session_state:
-        st.session_state.country = "Dubai"
+        st.session_state.country = "Brazil"  # Default to "Brazil" or any country you prefer
 
     country_options = ["Dubai", "Saudi", "Shanghai", "Brazil"]
     try:
