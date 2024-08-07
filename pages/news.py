@@ -142,7 +142,8 @@ def main():
 
     if country != st.session_state.country:
         st.session_state.country = country
-        st.experimental_rerun()  # Consider commenting this line for debugging
+        # Handle country change without rerunning the script
+        st.experimental_rerun()  # Use with caution; consider alternatives
 
     st.subheader("Search News")
     query = st.text_input("Enter search query")
