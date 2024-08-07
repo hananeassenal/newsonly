@@ -20,12 +20,10 @@ llm = Groq(model="llama3-70b-8192", api_key=GROQ_API_KEY)
 
 # Predefined queries by country
 queries_by_country = {
-    "France": ["France new data centre", "France new data center"],
-    "UK": ["UK new data centre", "UK new data center"],
-    "Germany": ["Germany new data centre", "Germany new data center"],
-    "Ireland": ["Ireland new data centre", "Ireland new data center"],
-    "USA": ["USA new data centre", "USA new data center"],
-    "Brazil": ["Brazil new data centre", "Brazil new data center"]
+    "Brazil": ["Brazil", "Brazil news", "brazil port"],
+    "Dubai": ["Dubai", "Dubai news", "dubai port"],
+    "Saudi": ["Saudi new data center", "Saudi"],
+    "Shanghai": ["Shanghai port", "Shanghai news", "Shanghai"]
 }
 
 def parse_relative_date(relative_date_str):
@@ -64,12 +62,10 @@ def fetch_summary(url):
 
 def fetch_articles(query):
     country_code = {
-        "France": "fr",
         "Brazil": "br",
-        "USA": "us",
-        "UK": "gb",
-        "Germany": "de",
-        "Ireland": "ie"
+        "Dubai": "ae",
+        "Saudi": "sa",
+        "Shanghai": "cn"
     }.get(st.session_state.country, "us")
 
     url = "https://google.serper.dev/news"
