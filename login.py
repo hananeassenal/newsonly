@@ -20,8 +20,6 @@ def connect_to_mongo():
 
 users_collection = connect_to_mongo()
 
-
-
 # Function to initialize session state
 @st.cache_resource
 def init_session_state():
@@ -95,9 +93,7 @@ def login():
                     st.session_state.email = user["email"]
                     st.session_state.country = user.get("country", "")  # Store the country info if available
                     st.session_state.page = 'home'  # Directly go to home page
-                    ############################
                     st.rerun()
-                    ############################
                 else:
                     st.error("Invalid email or password.")
             else:
@@ -115,7 +111,7 @@ def home():
 # Main function
 def main():
     st.title("News App")
-    init_session_state()
+    init_session_state()  # Initialize session state
 
     if st.session_state.page == 'home':
         home()
