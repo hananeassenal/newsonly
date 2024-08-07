@@ -74,7 +74,7 @@ def fetch_articles(query):
         "q": query,
         "gl": country_code,
         "num": 20,  # Adjust the number of results if needed
-        "tbs": "qdr:w"
+        "tbs": "qdr:m"
     })
     headers = {
         'X-API-KEY': '72961141ec55e220e7bfac56098cc1627f49bd9b',
