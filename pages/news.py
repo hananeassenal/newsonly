@@ -173,7 +173,7 @@ def main():
     if 'country' not in st.session_state:
         st.session_state.country = "France"
 
-    country_options = ["Dubai", "Saudi","shanghai", "Brazil"]
+    country_options = ["Dubai", "Saudi","Shanghai", "Brazil"]
     try:
         country_index = country_options.index(st.session_state.country)
     except ValueError:
