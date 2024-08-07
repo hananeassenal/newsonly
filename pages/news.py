@@ -77,7 +77,7 @@ def fetch_articles(query):
         "tbs": "qdr:m"
     })
     headers = {
-        'X-API-KEY': '72961141ec55e220e7bfac56098cc1627f49bd9b',
+        'X-API-KEY': '01cecc1a7a03c38923dbf4187aed4fd6545ca4f8',
         'Content-Type': 'application/json'
     }
 
