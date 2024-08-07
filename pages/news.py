@@ -20,10 +20,10 @@ llm = Groq(model="llama3-70b-8192", api_key=GROQ_API_KEY)
 
 # Predefined queries by country
 queries_by_country = {
-    "Brazil": ["Brazil", "Brazil news", "brazil port"],
-    "Dubai": ["Dubai", "Dubai news", "dubai port"],
-    "Saudi": ["Saudi new data center", "Saudi"],
-    "Shanghai": ["Shanghai port", "Shanghai news", "Shanghai"]
+    "Brazil": ["Brazil hydro Drought", "Brazil low hydro", "Sao Paolo Blackouts", "Brazil blackouts"],
+    "Dubai": ["Jebel Ali Dubai Port constraints", "Jebel Ali Dubai Port storm", "Jebel Ali Dubai Port flood"],
+    "Saudi": ["Saudi new data centre", "Saudi new data center"],
+    "Shanghai": ["Shanghai port congestion", "Shanghai port constraint", "Shanghai port delays"]
 }
 
 def parse_relative_date(relative_date_str):
