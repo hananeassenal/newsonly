@@ -58,6 +58,7 @@ def fetch_summary(url):
         summary = llm.complete(prompt)
         return f"{summary}\n\nFor more please visit {url}"
     except Exception as e:
+        logger.error(f"Failed to fetch summary for {url}: {e}")
         return f"For more please visit {url}"
 
 def fetch_articles(query):
@@ -80,15 +81,18 @@ def fetch_articles(query):
         'Content-Type': 'application/json'
     }
 
-    response = requests.post(url, headers=headers, data=payload)
-
-    if response.status_code == 429:
-        st.warning("Too many requests. Waiting for 5 seconds before retrying...")
-        time.sleep(5)  # Wait for 5 seconds before retrying
+    try:
         response = requests.post(url, headers=headers, data=payload)
 
-    if response.status_code == 200:
+        if response.status_code == 429:
+            st.warning("Too many requests. Waiting for 5 seconds before retrying...")
+            time.sleep(5)  # Wait for 5 seconds before retrying
+            response = requests.post(url, headers=headers, data=payload)
+
+        response.raise_for_status()  # Raise an HTTPError for bad responses
+
         json_data = response.json()
+        logger.info(f"API Response: {json.dumps(json_data, indent=2)}")
 
         if 'news' in json_data and json_data['news']:
             articles = []
@@ -129,8 +133,8 @@ def fetch_articles(query):
                             logger.error(f"Generated an exception: {exc}")
         else:
             st.warning("No articles found.")
-    else:
-        st.error(f"API request error: {response.status_code} - {response.reason}")
+    except requests.RequestException as e:
+        st.error(f"API request error: {e}")
 
 def display_article(article):
     button_key = f"save_{article['url']}"
@@ -171,7 +175,7 @@ def main():
     st.title("News Articles")
 
     if 'country' not in st.session_state:
-        st.session_state.country = "Brazil"  # Default to "Brazil" or any country you prefer
+        st.session_state.country = "France"
 
     country_options = ["Dubai", "Saudi", "Shanghai", "Brazil"]
     try:
