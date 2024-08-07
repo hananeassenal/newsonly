@@ -1,9 +1,11 @@
+import time
 import streamlit as st
 import requests
 from newspaper import Article
 from llama_index.llms.groq import Groq
 from datetime import datetime
 from pymongo import MongoClient, errors
+from concurrent.futures import ThreadPoolExecutor
 
 # Groq API Key
 GROQ_API_KEY = "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"
@@ -14,7 +16,7 @@ queries_by_country = {
     "Brazil": ["Brazil hydro Drought", "Brazil low hydro", "Sao Paolo Blackouts", "Brazil blackouts"],
     "Dubai": ["Jebel Ali Dubai Port constraints", "Jebel Ali Dubai Port storm", "Jebel Ali Dubai Port flood"],
     "Saudi": ["Saudi new data centre", "Saudi new data center"],
-    "China": ["Shanghai port congestion", "Shanghai port constraint", "Shanghai port delays"]
+    "Shanghai": ["Shanghai port congestion", "Shanghai port constraint", "Shanghai port delays"]
 }
 
 # Function to check if user is logged in
@@ -24,6 +26,7 @@ def check_login():
         st.write("[Login](login.py)")
         st.stop()
 
+@st.cache_data(ttl=600)
 def fetch_summary(url):
     try:
         article = Article(url)
@@ -39,6 +42,7 @@ def fetch_summary(url):
     except Exception as e:
         return f"For more please visit {url}"
 
+@st.cache_data(ttl=600)
 def fetch_articles(query):
     url = "https://newsnow.p.rapidapi.com/newsv2"
     payload = {
@@ -58,6 +62,10 @@ def fetch_articles(query):
 
     response = requests.post(url, json=payload, headers=headers)
 
+    if response.status_code == 429:
+        time.sleep(5)
+        response = requests.post(url, json=payload, headers=headers)
+
     if response.status_code == 200:
         json_data = response.json()
         if 'news' in json_data and json_data['news']:
@@ -67,26 +75,19 @@ def fetch_articles(query):
                 image_url = article.get('top_image', '')
                 date = article.get('date', '')
                 article_url = article.get('url', '')
-                
+
                 articles.append({
                     'title': title,
                     'image_url': image_url,
                     'date': datetime.strptime(date, '%a, %d %b %Y %H:%M:%S GMT'),
                     'url': article_url
                 })
-            
+
             articles.sort(key=lambda x: x['date'], reverse=True)
-            
-            for article in articles:
-                with st.spinner(f"Processing article: {article['title']}"):
-                    summary = fetch_summary(article['url'])
-                    article['summary'] = summary
-                    display_article(article)
-                    st.write("---")
-        else:
-            st.error("No articles found.")
+            return articles
     else:
         st.error(f"API request error: {response.status_code} - {response.reason}")
+        return []
 
 def display_article(article):
     st.markdown(f"""
@@ -123,26 +124,47 @@ def save_article(article):
     )
 
 def main():
-    check_login()  # Ensure the user is logged in
+    check_login()
 
-    st.header(f"News Articles")
+    st.header("News Articles")
     
-    # Ensure country is set from session state
     if 'country' not in st.session_state:
-        st.session_state.country = "Brazil"  # Default country if not set
+        st.session_state.country = "Brazil"
 
-    country = st.selectbox("Select Country", ["Brazil", "Dubai", "Saudi", "China"], index=["Brazil", "Dubai", "Saudi", "China"].index(st.session_state.country))
-    st.session_state.country = country
+    countries = ["Brazil", "Dubai", "Saudi", "Shanghai"]
+
+    if st.session_state.country not in countries:
+        st.session_state.country = "Brazil"
+
+    default_index = countries.index(st.session_state.country)
+
+    country = st.selectbox("Select Country", countries, index=default_index, key='country_select')
+
+    if country != st.session_state.country:
+        st.session_state.country = country
+        st.experimental_rerun()
 
     st.subheader("Search News")
     query = st.text_input("Enter search query")
 
     if query:
-        fetch_articles(query)
+        articles = fetch_articles(query)
+        with ThreadPoolExecutor() as executor:
+            results = list(executor.map(fetch_summary, [article['url'] for article in articles]))
+        for article, summary in zip(articles, results):
+            article['summary'] = summary
+            display_article(article)
+            st.write("---")
     else:
         queries = queries_by_country.get(st.session_state.country, [])
         for query in queries:
-            fetch_articles(query)
+            articles = fetch_articles(query)
+            with ThreadPoolExecutor() as executor:
+                results = list(executor.map(fetch_summary, [article['url'] for article in articles]))
+            for article, summary in zip(articles, results):
+                article['summary'] = summary
+                display_article(article)
+                st.write("---")
 
 if __name__ == "__main__":
     main()
